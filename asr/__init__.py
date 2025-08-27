@@ -36,6 +36,8 @@ speech_client = SpeechClient(
 )
 
 
+project_id = os.environ.get("GCP_PROJECT")
+
 # We know gunicorn does this, but it doesn't *say* it does this, so we must signal it manually.
 @app.before_request
 def handle_chunking():
@@ -105,6 +107,7 @@ def recognise():
     )
 
     asr_request = cloud_speech.RecognizeRequest(
+        recognizer=f"projects/{project_id}/locations/us-central1/recognizers/_",
         config=config,
         content=bytes(pcm),
     )
