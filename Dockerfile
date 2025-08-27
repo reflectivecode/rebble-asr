@@ -28,5 +28,6 @@ RUN addgroup -S flaskgroup \
 USER flask
 
 ENV PORT=5000
+ENV GOOGLE_APPLICATION_CREDENTIALS=/home/flask/google.json
 
 CMD /code/run.sh
