@@ -31,8 +31,6 @@ logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 
-AUTH_URL = os.environ.get("AUTH_URL", "https://auth.rebble.io")
-
 speech_client = SpeechClient(
     client_options={"api_endpoint": "us-central1-speech.googleapis.com"}
 )
@@ -44,7 +42,6 @@ bucket = storage_client.bucket(os.environ.get("BUCKET_NAME", "rebble-audio-debug
 @app.before_request
 def handle_chunking():
     request.environ['wsgi.input_terminated'] = 1
-
 
 
 def parse_chunks(stream):
@@ -75,22 +72,7 @@ def heartbeat():
 def recognise():
     stream = request.stream
 
-    access_token, lang = request.host.split('.', 1)[0].split('-', 1)
-
-    auth_req = requests.get(f"{AUTH_URL}/api/v1/me/token", headers={'Authorization': f"Bearer {access_token}"})
-    if not auth_req.ok:
-        abort(401)
-
-    result = auth_req.json()
-    if not result['is_subscribed']:
-        abort(402)
-
-    user_id = result.get('uid', None)
-    audio_debug_enabled = result.get('audio_debug_mode', False)
-    if user_id is None:
-        audio_debug_enabled = False
-
-    lang = model_map.get_real_lang(lang)
+    lang = "en-US"
 
     req_start = datetime.datetime.now()
     logging.info("Received transcription request in language: %s", lang)
@@ -105,19 +87,6 @@ def recognise():
     for chunk in chunks:
         pcm.extend(decoder.decode(chunk))
     logging.info("Decoded speex in %s", datetime.datetime.now() - decode_start)
-
-    if audio_debug_enabled:
-        upload_start = datetime.datetime.now()
-        buffer = io.BytesIO(pcm)
-        with wave.open(buffer, 'wb') as wav_file:
-            wav_file.setnchannels(1)
-            wav_file.setsampwidth(2)
-            wav_file.setframerate(16000)
-            wav_file.writeframes(pcm)
-        buffer.seek(0)
-        blob = bucket.blob(f"audio/users/{user_id}/recording-{datetime.datetime.now().isoformat()}.wav")
-        blob.upload_from_file(buffer, rewind=True, content_type="audio/wav")
-        logging.info("Uploaded audio in %s", datetime.datetime.now() - upload_start)
 
     asr_request_start = datetime.datetime.now()
     config = cloud_speech.RecognitionConfig(
@@ -156,14 +125,6 @@ def recognise():
         else:
             break
     logging.info("ASR request completed in %s", datetime.datetime.now() - asr_request_start)
-
-    if audio_debug_enabled:
-        complete_response = ''.join(result.alternatives[0].transcript for result in response.results)
-        blob.metadata = {
-            'rebble-language': lang,
-            'rebble-transcript': base64.b64encode(complete_response.encode('utf-8')).decode('utf-8')
-        }
-        blob.patch()
 
     words = []
     for result in response.results:
