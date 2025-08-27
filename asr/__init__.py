@@ -35,8 +35,6 @@ speech_client = SpeechClient(
     client_options={"api_endpoint": "us-central1-speech.googleapis.com"}
 )
 
-storage_client = storage.Client(project=os.environ.get("GCP_PROJECT", 'pebble-rebirth'))
-bucket = storage_client.bucket(os.environ.get("BUCKET_NAME", "rebble-audio-debug"))
 
 # We know gunicorn does this, but it doesn't *say* it does this, so we must signal it manually.
 @app.before_request
@@ -107,7 +105,6 @@ def recognise():
     )
 
     asr_request = cloud_speech.RecognizeRequest(
-        recognizer=f"projects/pebble-rebirth/locations/us-central1/recognizers/_",
         config=config,
         content=bytes(pcm),
     )
