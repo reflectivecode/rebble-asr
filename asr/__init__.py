@@ -25,6 +25,8 @@ import datetime
 
 import wave
 
+from urllib.parse import urlparse
+
 logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
@@ -201,3 +203,29 @@ def recognise():
     response.headers['Content-Type'] = f'multipart/form-data; boundary={parts.get_boundary()}'
     logging.info("Request complete in %s", datetime.datetime.now() - req_start)
     return response
+
+@app.route('/api/stage2/ios')
+@app.route('/api/stage2/android/v3/<int:build>')
+def boot(build: int = 0):
+    app.logger.setLevel(logging.INFO)
+    app.logger.info('boot request started')
+    full_path = request.full_path.replace('access\\_token', 'access_token')
+    req = requests.get(f'https://boot.rebble.io{full_path}')
+    if not req.ok:
+        app.logger.info(full_path)
+        app.logger.info(req.status_code)
+        app.logger.info(req.text)
+        abort(req.status_code)
+    boot = req.json()
+
+    parsed = urlparse(request.base_url)
+
+    boot['config']['voice']['languages'].append({
+        'endpoint': parsed.hostname,
+        'four_char_locale': 'en_US',
+        'six_char_locale': 'eng-USA',
+    })
+    resp = jsonify(boot)
+    resp.headers['Cache-Control'] = 'private, no-cache'
+    app.logger.info('boot request completed')
+    return resp
