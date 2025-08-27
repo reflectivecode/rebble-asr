@@ -176,6 +176,7 @@ def recognise():
     response_part.add_header('Content-Type', 'application/JSON; charset=utf-8')
 
     if len(words) > 0:
+        logging.info("transcription succeeded")
         response_part.add_header('Content-Disposition', 'form-data; name="QueryResult"')
         words[0]['word'] += '\\*no-space-before'
         words[0]['word'] = words[0]['word'][0].upper() + words[0]['word'][1:]
@@ -183,6 +184,7 @@ def recognise():
             'words': [words],
         }))
     else:
+        logging.info("transcription failed")
         response_part.add_header('Content-Disposition', 'form-data; name="QueryRetry"')
         # Other errors probably exist, but I don't know what they are.
         # This is a Nuance error verbatim.
