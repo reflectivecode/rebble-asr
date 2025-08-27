@@ -29,4 +29,4 @@ USER flask
 
 ENV PORT=5000
 
-CMD exec gunicorn -k gevent -b 0.0.0.0:$PORT asr:app
+CMD /code/run.sh
